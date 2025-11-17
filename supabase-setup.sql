@@ -5,7 +5,7 @@ CREATE TABLE users (
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
   mobile TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email TEXT,
   role TEXT NOT NULL CHECK (role IN ('admin', 'driver')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
