@@ -11,9 +11,16 @@ function DriverDashboard() {
     <div style={{ minHeight: '100vh' }}>
       <div className="container">
         <div className="header">
-          <div>
-            <h2>Driver Dashboard</h2>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Welcome back, {user.name} 👋</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <img 
+              src="/logo.png" 
+              alt="Hussnain Transport" 
+              style={{ width: '50px', height: '50px', objectFit: 'contain' }} 
+            />
+            <div>
+              <h2>Hussnain Transport</h2>
+              <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Welcome back, {user.name} 👋</p>
+            </div>
           </div>
           <button onClick={logout} className="btn btn-danger">
             🚪 Logout

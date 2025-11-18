@@ -124,11 +124,16 @@ function UserManagement() {
 
           <label>Mobile Number (8 digits)</label>
           <input
-            type="text"
+            type="tel"
             pattern="[0-9]{8}"
             value={formData.mobile}
-            onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+            onChange={(e) => {
+              // Remove any non-numeric characters
+              const cleaned = e.target.value.replace(/\D/g, '');
+              setFormData({ ...formData, mobile: cleaned });
+            }}
             placeholder="12345678"
+            maxLength="8"
             required
           />
 
