@@ -20,6 +20,7 @@ function Login() {
       }
       // If successful, navigation handled by App.jsx
     } catch (err) {
+      console.error('Login error:', err);
       setError('❌ Login failed. Please check your connection and try again.');
     } finally {
       setLoading(false);
