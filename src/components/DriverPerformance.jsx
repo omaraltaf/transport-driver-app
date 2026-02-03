@@ -1,12 +1,29 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Performance from './Performance';
+import AdminSessionEditor from './AdminSessionEditor';
 
 function DriverPerformance() {
   const { users } = useAuth();
   const [selectedDriver, setSelectedDriver] = useState('');
+  const [editingSession, setEditingSession] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const drivers = users.filter(u => u.role === 'driver');
+
+  const handleEditSession = (session) => {
+    setEditingSession(session);
+  };
+
+  const handleCloseEditor = () => {
+    setEditingSession(null);
+  };
+
+  const handleSaveSession = (updatedSession) => {
+    // Trigger refresh of Performance component
+    setRefreshTrigger(prev => prev + 1);
+    setEditingSession(null);
+  };
 
   return (
     <div className="card">
@@ -35,7 +52,12 @@ function DriverPerformance() {
       </div>
 
       {selectedDriver ? (
-        <Performance userId={selectedDriver} />
+        <Performance 
+          userId={selectedDriver} 
+          isAdminView={true}
+          onEditSession={handleEditSession}
+          refreshTrigger={refreshTrigger}
+        />
       ) : (
         <div style={{ 
           textAlign: 'center', 
@@ -45,6 +67,15 @@ function DriverPerformance() {
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>👆</div>
           <p style={{ fontSize: '16px', fontWeight: '500' }}>Select a driver to view their performance</p>
         </div>
+      )}
+
+      {/* Admin Session Editor Modal */}
+      {editingSession && (
+        <AdminSessionEditor
+          session={editingSession}
+          onClose={handleCloseEditor}
+          onSave={handleSaveSession}
+        />
       )}
     </div>
   );

@@ -12,8 +12,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { calculateTimeMetrics } from '../lib/sessionHelpers';
 
-function Performance({ userId }) {
+function Performance({ userId, isAdminView = false, onEditSession, refreshTrigger = 0 }) {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [days, setDays] = useState(7);
   const [startDate, setStartDate] = useState('');
@@ -23,14 +26,21 @@ function Performance({ userId }) {
 
   useEffect(() => {
     loadSessions();
-  }, [userId, days, startDate, endDate, useCustomRange]);
+  }, [userId, days, startDate, endDate, useCustomRange, refreshTrigger]);
 
   const loadSessions = async () => {
     setLoading(true);
     try {
       let query = supabase
         .from('sessions')
-        .select('*')
+        .select(`
+          *,
+          user:user_id (
+            id,
+            name,
+            username
+          )
+        `)
         .eq('user_id', userId)
         .not('end_time', 'is', null);
 
@@ -62,18 +72,18 @@ function Performance({ userId }) {
   };
 
   const calculateWorkHours = (session) => {
-    const start = new Date(session.start_time);
-    const end = new Date(session.end_time);
-    let totalMs = end - start;
+    const metrics = calculateTimeMetrics(session);
+    return metrics.workTime.toFixed(2);
+  };
 
-    const breaks = session.breaks || [];
-    breaks.forEach((brk) => {
-      if (brk.end) {
-        totalMs -= new Date(brk.end) - new Date(brk.start);
-      }
-    });
+  const calculateBreakHours = (session) => {
+    const metrics = calculateTimeMetrics(session);
+    return metrics.breakTime.toFixed(2);
+  };
 
-    return (totalMs / (1000 * 60 * 60)).toFixed(2);
+  const calculateTotalHours = (session) => {
+    const metrics = calculateTimeMetrics(session);
+    return metrics.totalTime.toFixed(2);
   };
 
   const formatDate = (isoString) => {
@@ -98,23 +108,49 @@ function Performance({ userId }) {
       .map((session) => ({
         date: formatDateShort(session.date),
         workHours: parseFloat(calculateWorkHours(session)),
-        deliveries: session.deliveries || 0,
-        pickups: session.pickups || 0,
+        breakHours: parseFloat(calculateBreakHours(session)),
+        totalHours: parseFloat(calculateTotalHours(session)),
+        positiveDeliveries: session.positive_deliveries || 0,
+        negativeDeliveries: session.negative_deliveries || 0,
+        deliveries: (session.positive_deliveries || 0) + (session.negative_deliveries || 0),
+        positivePickups: session.positive_pickups || 0,
+        negativePickups: session.negative_pickups || 0,
+        pickups: (session.positive_pickups || 0) + (session.negative_pickups || 0),
         breaks: (session.breaks || []).length,
+        totalKm: session.total_km || 0
       }));
   };
 
   const getTotalStats = () => {
-    const totalDeliveries = sessions.reduce((sum, s) => sum + (s.deliveries || 0), 0);
-    const totalPickups = sessions.reduce((sum, s) => sum + (s.pickups || 0), 0);
-    const totalHours = sessions.reduce((sum, s) => sum + parseFloat(calculateWorkHours(s)), 0);
-    const avgHours = sessions.length > 0 ? totalHours / sessions.length : 0;
+    const totalPositiveDeliveries = sessions.reduce((sum, s) => sum + (s.positive_deliveries || 0), 0);
+    const totalNegativeDeliveries = sessions.reduce((sum, s) => sum + (s.negative_deliveries || 0), 0);
+    const totalDeliveries = totalPositiveDeliveries + totalNegativeDeliveries;
+    
+    const totalPositivePickups = sessions.reduce((sum, s) => sum + (s.positive_pickups || 0), 0);
+    const totalNegativePickups = sessions.reduce((sum, s) => sum + (s.negative_pickups || 0), 0);
+    const totalPickups = totalPositivePickups + totalNegativePickups;
+    
+    const totalWorkHours = sessions.reduce((sum, s) => sum + parseFloat(calculateWorkHours(s)), 0);
+    const totalBreakHours = sessions.reduce((sum, s) => sum + parseFloat(calculateBreakHours(s)), 0);
+    const totalHours = sessions.reduce((sum, s) => sum + parseFloat(calculateTotalHours(s)), 0);
+    const totalKm = sessions.reduce((sum, s) => sum + (s.total_km || 0), 0);
+    
+    const avgWorkHours = sessions.length > 0 ? totalWorkHours / sessions.length : 0;
+    const avgBreakHours = sessions.length > 0 ? totalBreakHours / sessions.length : 0;
 
     return {
       totalDeliveries,
+      totalPositiveDeliveries,
+      totalNegativeDeliveries,
       totalPickups,
+      totalPositivePickups,
+      totalNegativePickups,
+      totalWorkHours: totalWorkHours.toFixed(1),
+      totalBreakHours: totalBreakHours.toFixed(1),
       totalHours: totalHours.toFixed(1),
-      avgHours: avgHours.toFixed(1),
+      avgWorkHours: avgWorkHours.toFixed(1),
+      avgBreakHours: avgBreakHours.toFixed(1),
+      totalKm: totalKm.toFixed(1),
       totalDays: sessions.length,
     };
   };
@@ -253,31 +289,43 @@ function Performance({ userId }) {
                 label: 'Total Deliveries',
                 value: getTotalStats().totalDeliveries,
                 color: '#667eea',
+                subtitle: `${getTotalStats().totalPositiveDeliveries} success, ${getTotalStats().totalNegativeDeliveries} failed`
               },
               {
                 icon: '📥',
                 label: 'Total Pickups',
                 value: getTotalStats().totalPickups,
                 color: '#10b981',
+                subtitle: `${getTotalStats().totalPositivePickups} success, ${getTotalStats().totalNegativePickups} failed`
               },
               {
                 icon: '⏰',
+                label: 'Work Hours',
+                value: getTotalStats().totalWorkHours + 'h',
+                color: '#f59e0b',
+                subtitle: `Avg: ${getTotalStats().avgWorkHours}h/day`
+              },
+              {
+                icon: '☕',
+                label: 'Break Hours',
+                value: getTotalStats().totalBreakHours + 'h',
+                color: '#ef4444',
+                subtitle: `Avg: ${getTotalStats().avgBreakHours}h/day`
+              },
+              {
+                icon: '🕐',
                 label: 'Total Hours',
                 value: getTotalStats().totalHours + 'h',
-                color: '#f59e0b',
-              },
-              {
-                icon: '📊',
-                label: 'Avg Hours/Day',
-                value: getTotalStats().avgHours + 'h',
-                color: '#ef4444',
-              },
-              {
-                icon: '📅',
-                label: 'Total Days',
-                value: getTotalStats().totalDays,
                 color: '#8b5cf6',
+                subtitle: `Work + Break time`
               },
+              {
+                icon: '🚗',
+                label: 'Distance Driven',
+                value: getTotalStats().totalKm + ' KM',
+                color: '#06b6d4',
+                subtitle: `${sessions.length} days tracked`
+              }
             ].map((stat, idx) => (
               <div
                 key={idx}
@@ -316,10 +364,22 @@ function Performance({ userId }) {
                     fontSize: '12px',
                     color: '#6b7280',
                     fontWeight: '600',
+                    marginBottom: '2px'
                   }}
                 >
                   {stat.label}
                 </div>
+                {stat.subtitle && (
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      color: '#9ca3af',
+                      fontWeight: '500',
+                    }}
+                  >
+                    {stat.subtitle}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -333,7 +393,7 @@ function Performance({ userId }) {
               marginBottom: '32px',
             }}
           >
-            {/* Work Hours Chart */}
+            {/* Work Hours & Break Hours Chart */}
             <div
               style={{
                 background: 'white',
@@ -350,7 +410,7 @@ function Performance({ userId }) {
                   color: '#374151',
                 }}
               >
-                ⏰ Work Hours Trend
+                ⏰ Work & Break Hours Trend
               </h4>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={getChartData()}>
@@ -369,17 +429,26 @@ function Performance({ userId }) {
                   <Line
                     type="monotone"
                     dataKey="workHours"
-                    stroke="#667eea"
+                    stroke="#10b981"
                     strokeWidth={3}
-                    dot={{ fill: '#667eea', r: 5 }}
+                    dot={{ fill: '#10b981', r: 5 }}
                     activeDot={{ r: 7 }}
                     name="Work Hours"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="breakHours"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={{ fill: '#f59e0b', r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Break Hours"
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Deliveries & Pickups Chart */}
+            {/* Deliveries Success/Failure Chart */}
             <div
               style={{
                 background: 'white',
@@ -396,7 +465,7 @@ function Performance({ userId }) {
                   color: '#374151',
                 }}
               >
-                📦 Deliveries & Pickups
+                📦 Delivery Success Rate
               </h4>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={getChartData()}>
@@ -412,13 +481,13 @@ function Performance({ userId }) {
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '13px' }} />
-                  <Bar dataKey="deliveries" fill="#667eea" radius={[8, 8, 0, 0]} name="Deliveries" />
-                  <Bar dataKey="pickups" fill="#10b981" radius={[8, 8, 0, 0]} name="Pickups" />
+                  <Bar dataKey="positiveDeliveries" stackId="deliveries" fill="#10b981" radius={[0, 0, 0, 0]} name="Successful" />
+                  <Bar dataKey="negativeDeliveries" stackId="deliveries" fill="#ef4444" radius={[8, 8, 0, 0]} name="Failed" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Breaks Chart */}
+            {/* Pickups Success/Failure Chart */}
             <div
               style={{
                 background: 'white',
@@ -435,7 +504,7 @@ function Performance({ userId }) {
                   color: '#374151',
                 }}
               >
-                ☕ Break Frequency
+                📥 Pickup Success Rate
               </h4>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={getChartData()}>
@@ -445,18 +514,14 @@ function Performance({ userId }) {
                   <Tooltip
                     contentStyle={{
                       background: 'white',
-                      border: '2px solid #f59e0b',
+                      border: '2px solid #667eea',
                       borderRadius: '8px',
                       fontSize: '13px',
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: '13px' }} />
-                  <Bar
-                    dataKey="breaks"
-                    fill="#f59e0b"
-                    radius={[8, 8, 0, 0]}
-                    name="Number of Breaks"
-                  />
+                  <Bar dataKey="positivePickups" stackId="pickups" fill="#667eea" radius={[0, 0, 0, 0]} name="Successful" />
+                  <Bar dataKey="negativePickups" stackId="pickups" fill="#f59e0b" radius={[8, 8, 0, 0]} name="Failed" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -479,7 +544,7 @@ function Performance({ userId }) {
                 color: '#374151',
               }}
             >
-              📋 Detailed Records
+              📋 Detailed Records {isAdminView && <span style={{ fontSize: '12px', color: '#6b7280' }}>(Click to edit)</span>}
             </h4>
             <div style={{ overflowX: 'auto' }}>
               <table>
@@ -490,24 +555,97 @@ function Performance({ userId }) {
                     <th>📦 Deliveries</th>
                     <th>📥 Pickups</th>
                     <th>⏰ Work Hours</th>
-                    <th>☕ Breaks</th>
+                    <th>☕ Break Hours</th>
+                    <th>🚗 Distance</th>
+                    {isAdminView && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {sessions.map((session) => (
-                    <tr key={session.id}>
+                    <tr 
+                      key={session.id}
+                      style={{ 
+                        cursor: isAdminView ? 'pointer' : 'default',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isAdminView) {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isAdminView) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
                       <td style={{ fontWeight: '600', color: '#374151' }}>
                         {formatDate(session.date)}
                       </td>
                       <td style={{ color: '#667eea', fontWeight: '600' }}>
                         {session.route_number || '-'}
                       </td>
-                      <td style={{ fontWeight: '600' }}>{session.deliveries || 0}</td>
-                      <td style={{ fontWeight: '600' }}>{session.pickups || 0}</td>
+                      <td style={{ fontWeight: '600' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{ color: '#10b981' }}>
+                            ✓ {session.positive_deliveries || 0}
+                          </span>
+                          {(session.negative_deliveries || 0) > 0 && (
+                            <span style={{ color: '#ef4444', fontSize: '12px' }}>
+                              ✗ {session.negative_deliveries}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                            Total: {(session.positive_deliveries || 0) + (session.negative_deliveries || 0)}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ fontWeight: '600' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{ color: '#10b981' }}>
+                            ✓ {session.positive_pickups || 0}
+                          </span>
+                          {(session.negative_pickups || 0) > 0 && (
+                            <span style={{ color: '#ef4444', fontSize: '12px' }}>
+                              ✗ {session.negative_pickups}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                            Total: {(session.positive_pickups || 0) + (session.negative_pickups || 0)}
+                          </span>
+                        </div>
+                      </td>
                       <td style={{ color: '#10b981', fontWeight: '700' }}>
                         {calculateWorkHours(session)}h
                       </td>
-                      <td>{(session.breaks || []).length}</td>
+                      <td style={{ color: '#f59e0b', fontWeight: '600' }}>
+                        {calculateBreakHours(session)}h
+                      </td>
+                      <td style={{ color: '#06b6d4', fontWeight: '600' }}>
+                        {session.total_km ? `${session.total_km} KM` : '-'}
+                      </td>
+                      {isAdminView && (
+                        <td>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditSession(session);
+                            }}
+                            style={{
+                              background: '#2563eb',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '4px 8px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import UserManagement from './UserManagement';
 import DriverPerformance from './DriverPerformance';
+import AuditHistoryViewer from './AuditHistoryViewer';
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('users');
+  const [showAuditHistory, setShowAuditHistory] = useState(false);
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -40,10 +42,31 @@ function AdminDashboard() {
           >
             📊 Driver Performance
           </button>
+          <button
+            onClick={() => setShowAuditHistory(true)}
+            style={{
+              background: '#f3f4f6',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              marginLeft: 'auto'
+            }}
+          >
+            📋 Audit History
+          </button>
         </div>
 
         {activeTab === 'users' && <UserManagement />}
         {activeTab === 'performance' && <DriverPerformance />}
+
+        {/* Audit History Modal */}
+        {showAuditHistory && (
+          <AuditHistoryViewer onClose={() => setShowAuditHistory(false)} />
+        )}
       </div>
     </div>
   );
