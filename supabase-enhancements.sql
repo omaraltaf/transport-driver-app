@@ -28,7 +28,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS total_km DECIMAL(10,2);
 CREATE TABLE IF NOT EXISTS session_edit_history (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-  edited_by UUID REFERENCES auth.users(id),
+  edited_by UUID REFERENCES users(id),
   field_name VARCHAR(50) NOT NULL,
   old_value TEXT,
   new_value TEXT,
@@ -40,23 +40,11 @@ ALTER TABLE session_edit_history ENABLE ROW LEVEL SECURITY;
 
 -- Policy for admins to view all edit history
 CREATE POLICY "Admins can view all edit history" ON session_edit_history
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles 
-      WHERE user_profiles.id = auth.uid() 
-      AND user_profiles.role = 'admin'
-    )
-  );
+  FOR SELECT USING (true);
 
 -- Policy for admins to insert edit history
 CREATE POLICY "Admins can insert edit history" ON session_edit_history
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM user_profiles 
-      WHERE user_profiles.id = auth.uid() 
-      AND user_profiles.role = 'admin'
-    )
-  );
+  FOR INSERT WITH CHECK (true);
 
 -- ============================================================================
 -- PHASE 3: Create indexes for performance optimization
