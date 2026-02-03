@@ -75,14 +75,14 @@ UPDATE sessions
 SET 
   positive_deliveries = COALESCE(deliveries, 0),
   negative_deliveries = 0
-WHERE positive_deliveries IS NULL;
+WHERE deliveries > 0 AND positive_deliveries = 0;
 
 -- Migrate existing pickups to positive_pickups (assuming all were successful)
 UPDATE sessions 
 SET 
   positive_pickups = COALESCE(pickups, 0),
   negative_pickups = 0
-WHERE positive_pickups IS NULL;
+WHERE pickups > 0 AND positive_pickups = 0;
 
 -- ============================================================================
 -- PHASE 5: Create helper functions for calculations
