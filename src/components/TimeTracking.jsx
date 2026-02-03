@@ -49,18 +49,45 @@ function TimeTracking({ userId }) {
 
       const { data, error } = await supabase
         .from('sessions')
-        .select('*')
+        .select(`
+          id,
+          user_id,
+          date,
+          start_time,
+          end_time,
+          status,
+          route_number,
+          deliveries,
+          pickups,
+          positive_deliveries,
+          negative_deliveries,
+          positive_pickups,
+          negative_pickups,
+          delivery_comments,
+          pickup_comments,
+          start_km,
+          end_km,
+          total_km,
+          breaks
+        `)
         .eq('user_id', userId)
         .gte('date', today.toISOString())
         .is('end_time', null)
         .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error('Error loading session:', error);
+        }
+        return;
+      }
 
       if (data) {
         setCurrentSession(data);
         setStatus(data.status);
       }
     } catch (error) {
-      // No session found for today
+      console.error('Unexpected error loading session:', error);
     }
   };
 
@@ -115,7 +142,7 @@ function TimeTracking({ userId }) {
     setShowStartForm(true);
   };
 
-  const submitStartWork = (e) => {
+  const submitStartWork = async (e) => {
     e.preventDefault();
     
     const session = {
@@ -132,7 +159,7 @@ function TimeTracking({ userId }) {
       negative_pickups: 0
     };
     
-    const success = saveSession(session);
+    const success = await saveSession(session);
     if (success) {
       setStatus('working');
       setShowStartForm(false);
@@ -140,17 +167,19 @@ function TimeTracking({ userId }) {
     }
   };
 
-  const handleStartBreak = () => {
+  const handleStartBreak = async () => {
     const updated = {
       ...currentSession,
       status: 'on-break',
       breaks: [...(currentSession.breaks || []), { start: new Date().toISOString() }],
     };
-    saveSession(updated);
-    setStatus('on-break');
+    const success = await saveSession(updated);
+    if (success) {
+      setStatus('on-break');
+    }
   };
 
-  const handleEndBreak = () => {
+  const handleEndBreak = async () => {
     const breaks = [...(currentSession.breaks || [])];
     breaks[breaks.length - 1].end = new Date().toISOString();
 
@@ -159,15 +188,17 @@ function TimeTracking({ userId }) {
       status: 'working',
       breaks,
     };
-    saveSession(updated);
-    setStatus('working');
+    const success = await saveSession(updated);
+    if (success) {
+      setStatus('working');
+    }
   };
 
   const handleEndDay = () => {
     setShowEndDayForm(true);
   };
 
-  const submitEndDay = (e) => {
+  const submitEndDay = async (e) => {
     e.preventDefault();
 
     const updated = {
@@ -184,7 +215,7 @@ function TimeTracking({ userId }) {
       end_km: endKm ? parseFloat(endKm) : null
     };
     
-    const success = saveSession(updated);
+    const success = await saveSession(updated);
     if (success) {
       setStatus('ended');
       setShowEndDayForm(false);
