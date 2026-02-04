@@ -131,9 +131,15 @@ function AdminSessionEditor({ session, onClose, onSave }) {
         breaks: formData.breaks
       };
 
+      console.log('Original session:', session);
+      console.log('Form data:', formData);
+      console.log('Validation clean data:', validation.cleanData);
+      console.log('Updated session before totals:', updatedSession);
+
       // Additional validation for complete session
       const sessionErrors = validateSession(updatedSession);
       if (sessionErrors.length > 0) {
+        console.log('Session validation errors:', sessionErrors);
         setValidationErrors(sessionErrors);
         setLoading(false);
         return;
@@ -141,6 +147,15 @@ function AdminSessionEditor({ session, onClose, onSave }) {
 
       // Calculate totals for backward compatibility
       const sessionWithTotals = calculateTotals(updatedSession);
+      
+      // Remove any undefined or null fields that might cause issues
+      const cleanSessionData = Object.fromEntries(
+        Object.entries(sessionWithTotals).filter(([key, value]) => 
+          value !== undefined && key !== 'user' // Remove user object if present
+        )
+      );
+
+      console.log('Final session data for update:', cleanSessionData);
 
       // Prepare audit log entries
       const changes = [];
@@ -188,19 +203,33 @@ function AdminSessionEditor({ session, onClose, onSave }) {
         });
       }
 
+      console.log('Attempting to update session with data:', cleanSessionData);
+      
       // Update session in database
       const { data, error } = await supabase
         .from('sessions')
-        .update(sessionWithTotals)
+        .update(cleanSessionData)
         .eq('id', session.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      console.log('Session updated successfully:', data);
 
       // Log audit trail
       if (changes.length > 0) {
-        await logMultipleSessionEdits(session.id, changes, user.id);
+        try {
+          console.log('Logging audit changes:', changes);
+          await logMultipleSessionEdits(session.id, changes, user.id);
+          console.log('Audit logging completed');
+        } catch (auditError) {
+          console.error('Audit logging failed:', auditError);
+          // Don't fail the whole operation if audit logging fails
+        }
       }
 
       // Notify parent component
@@ -209,7 +238,23 @@ function AdminSessionEditor({ session, onClose, onSave }) {
 
     } catch (error) {
       console.error('Error updating session:', error);
-      setValidationErrors(['Failed to update session. Please try again.']);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to update session. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('permission')) {
+          errorMessage = 'Permission denied. You may not have admin rights.';
+        } else if (error.message.includes('not found')) {
+          errorMessage = 'Session not found. It may have been deleted.';
+        } else if (error.message.includes('constraint')) {
+          errorMessage = 'Invalid data. Please check your inputs.';
+        } else {
+          errorMessage = `Update failed: ${error.message}`;
+        }
+      }
+      
+      setValidationErrors([errorMessage]);
     } finally {
       setLoading(false);
     }
