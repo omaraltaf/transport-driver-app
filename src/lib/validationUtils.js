@@ -82,6 +82,124 @@ export const validateRouteNumber = (routeNumber) => {
 };
 
 /**
+ * Validate route number format (admin version - optional)
+ * @param {string} routeNumber - The route number
+ * @returns {Object} {isValid: boolean, error: string}
+ */
+export const validateRouteNumberOptional = (routeNumber) => {
+  if (!routeNumber || routeNumber.trim() === '') {
+    return { isValid: true, error: null }; // Optional for admin edits
+  }
+  
+  const trimmed = routeNumber.trim();
+  
+  if (trimmed.length > 50) {
+    return { isValid: false, error: 'Route number is too long (max 50 characters)' };
+  }
+  
+  // Allow alphanumeric, spaces, hyphens, and hash symbols
+  const validPattern = /^[a-zA-Z0-9\s\-#]+$/;
+  if (!validPattern.test(trimmed)) {
+    return { isValid: false, error: 'Route number contains invalid characters' };
+  }
+  
+  return { isValid: true, error: null };
+};
+
+/**
+ * Validate admin session edit form (route number optional)
+ * @param {Object} formData - Form data object
+ * @returns {Object} {isValid: boolean, errors: Array, cleanData: Object}
+ */
+export const validateAdminEditForm = (formData) => {
+  const errors = [];
+  const cleanData = {};
+  
+  // Validate route number (optional for admin edits)
+  const routeValidation = validateRouteNumberOptional(formData.route_number);
+  if (!routeValidation.isValid) {
+    errors.push(routeValidation.error);
+  } else {
+    cleanData.route_number = formData.route_number?.trim() || null;
+  }
+  
+  // Validate positive deliveries
+  const posDelValidation = validateNumericInput(formData.positive_deliveries, 'Positive deliveries');
+  if (!posDelValidation.isValid) {
+    errors.push(posDelValidation.error);
+  } else {
+    cleanData.positive_deliveries = posDelValidation.value;
+  }
+  
+  // Validate negative deliveries
+  const negDelValidation = validateNumericInput(formData.negative_deliveries, 'Negative deliveries');
+  if (!negDelValidation.isValid) {
+    errors.push(negDelValidation.error);
+  } else {
+    cleanData.negative_deliveries = negDelValidation.value;
+  }
+  
+  // Validate positive pickups
+  const posPickValidation = validateNumericInput(formData.positive_pickups, 'Positive pickups');
+  if (!posPickValidation.isValid) {
+    errors.push(posPickValidation.error);
+  } else {
+    cleanData.positive_pickups = posPickValidation.value;
+  }
+  
+  // Validate negative pickups
+  const negPickValidation = validateNumericInput(formData.negative_pickups, 'Negative pickups');
+  if (!negPickValidation.isValid) {
+    errors.push(negPickValidation.error);
+  } else {
+    cleanData.negative_pickups = negPickValidation.value;
+  }
+  
+  // Validate delivery comments
+  const delCommentValidation = validateComment(formData.delivery_comments, 'Delivery comments');
+  if (!delCommentValidation.isValid) {
+    errors.push(delCommentValidation.error);
+  } else {
+    cleanData.delivery_comments = formData.delivery_comments?.trim() || null;
+  }
+  
+  // Validate pickup comments
+  const pickupCommentValidation = validateComment(formData.pickup_comments, 'Pickup comments');
+  if (!pickupCommentValidation.isValid) {
+    errors.push(pickupCommentValidation.error);
+  } else {
+    cleanData.pickup_comments = formData.pickup_comments?.trim() || null;
+  }
+  
+  // Validate starting mileage
+  const startKmValidation = validateMileageInput(formData.start_km, 'Starting KM');
+  if (!startKmValidation.isValid) {
+    errors.push(startKmValidation.error);
+  } else {
+    cleanData.start_km = startKmValidation.value;
+  }
+  
+  // Validate ending mileage
+  const endKmValidation = validateMileageInput(formData.end_km, 'Ending KM');
+  if (!endKmValidation.isValid) {
+    errors.push(endKmValidation.error);
+  } else {
+    cleanData.end_km = endKmValidation.value;
+  }
+  
+  // Validate mileage relationship (if both start and end are provided)
+  if (cleanData.start_km && cleanData.end_km && cleanData.start_km >= cleanData.end_km) {
+    errors.push('Ending KM must be greater than starting KM');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    cleanData
+  };
+};
+
+/**
  * Validate comment text
  * @param {string} comment - The comment text
  * @param {string} fieldName - Name of the field for error messages

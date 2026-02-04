@@ -9,7 +9,7 @@ import {
   timeInputToISO 
 } from '../lib/sessionHelpers';
 import { 
-  validateEndOfDayForm, 
+  validateAdminEditForm, 
   validateFieldRealTime,
   sanitizeTextInput 
 } from '../lib/validationUtils';
@@ -113,7 +113,7 @@ function AdminSessionEditor({ session, onClose, onSave }) {
 
     try {
       // Validate form data
-      const validation = validateEndOfDayForm(formData);
+      const validation = validateAdminEditForm(formData);
       if (!validation.isValid) {
         setValidationErrors(validation.errors);
         setLoading(false);
