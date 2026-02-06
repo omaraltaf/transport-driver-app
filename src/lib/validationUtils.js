@@ -236,34 +236,42 @@ export const validateEndOfDayForm = (formData) => {
     cleanData.route_number = formData.routeNumber.trim();
   }
   
-  // Validate positive deliveries
+  // Validate positive deliveries (REQUIRED)
   const posDelValidation = validateNumericInput(formData.positiveDeliveries, 'Positive deliveries');
   if (!posDelValidation.isValid) {
     errors.push(posDelValidation.error);
+  } else if (formData.positiveDeliveries === '' || formData.positiveDeliveries === null || formData.positiveDeliveries === undefined) {
+    errors.push('Positive deliveries is required');
   } else {
     cleanData.positive_deliveries = posDelValidation.value;
   }
   
-  // Validate negative deliveries
+  // Validate negative deliveries (REQUIRED - can be 0)
   const negDelValidation = validateNumericInput(formData.negativeDeliveries, 'Negative deliveries');
   if (!negDelValidation.isValid) {
     errors.push(negDelValidation.error);
+  } else if (formData.negativeDeliveries === '' || formData.negativeDeliveries === null || formData.negativeDeliveries === undefined) {
+    errors.push('Negative deliveries is required (enter 0 if none)');
   } else {
     cleanData.negative_deliveries = negDelValidation.value;
   }
   
-  // Validate positive pickups
+  // Validate positive pickups (REQUIRED)
   const posPickValidation = validateNumericInput(formData.positivePickups, 'Positive pickups');
   if (!posPickValidation.isValid) {
     errors.push(posPickValidation.error);
+  } else if (formData.positivePickups === '' || formData.positivePickups === null || formData.positivePickups === undefined) {
+    errors.push('Positive pickups is required');
   } else {
     cleanData.positive_pickups = posPickValidation.value;
   }
   
-  // Validate negative pickups
+  // Validate negative pickups (REQUIRED - can be 0)
   const negPickValidation = validateNumericInput(formData.negativePickups, 'Negative pickups');
   if (!negPickValidation.isValid) {
     errors.push(negPickValidation.error);
+  } else if (formData.negativePickups === '' || formData.negativePickups === null || formData.negativePickups === undefined) {
+    errors.push('Negative pickups is required (enter 0 if none)');
   } else {
     cleanData.negative_pickups = negPickValidation.value;
   }
@@ -284,10 +292,12 @@ export const validateEndOfDayForm = (formData) => {
     cleanData.pickup_comments = formData.pickupComments?.trim() || null;
   }
   
-  // Validate ending mileage
+  // Validate ending mileage (REQUIRED)
   const endKmValidation = validateMileageInput(formData.endKm, 'Ending KM');
   if (!endKmValidation.isValid) {
     errors.push(endKmValidation.error);
+  } else if (formData.endKm === '' || formData.endKm === null || formData.endKm === undefined) {
+    errors.push('Ending KM is required');
   } else {
     cleanData.end_km = endKmValidation.value;
   }

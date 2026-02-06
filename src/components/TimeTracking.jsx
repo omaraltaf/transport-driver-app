@@ -502,25 +502,31 @@ function TimeTracking({ userId }) {
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px' }}>Successful Deliveries</label>
+                  <label style={{ fontSize: '13px' }}>
+                    Successful Deliveries <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input
                     type="number"
                     value={positiveDeliveries}
                     onChange={(e) => setPositiveDeliveries(e.target.value)}
                     placeholder="0"
                     min="0"
+                    required
                     style={{ marginBottom: '8px' }}
                   />
                 </div>
                 
                 <div>
-                  <label style={{ fontSize: '13px' }}>Failed Deliveries</label>
+                  <label style={{ fontSize: '13px' }}>
+                    Failed Deliveries <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input
                     type="number"
                     value={negativeDeliveries}
                     onChange={(e) => setNegativeDeliveries(e.target.value)}
                     placeholder="0"
                     min="0"
+                    required
                     style={{ marginBottom: '8px' }}
                   />
                 </div>
@@ -577,25 +583,31 @@ function TimeTracking({ userId }) {
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px' }}>Successful Pickups</label>
+                  <label style={{ fontSize: '13px' }}>
+                    Successful Pickups <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input
                     type="number"
                     value={positivePickups}
                     onChange={(e) => setPositivePickups(e.target.value)}
                     placeholder="0"
                     min="0"
+                    required
                     style={{ marginBottom: '8px' }}
                   />
                 </div>
                 
                 <div>
-                  <label style={{ fontSize: '13px' }}>Failed Pickups</label>
+                  <label style={{ fontSize: '13px' }}>
+                    Failed Pickups <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input
                     type="number"
                     value={negativePickups}
                     onChange={(e) => setNegativePickups(e.target.value)}
                     placeholder="0"
                     min="0"
+                    required
                     style={{ marginBottom: '8px' }}
                   />
                 </div>
@@ -666,7 +678,9 @@ function TimeTracking({ userId }) {
                 </div>
                 
                 <div>
-                  <label style={{ fontSize: '13px' }}>Ending KM</label>
+                  <label style={{ fontSize: '13px' }}>
+                    Ending KM <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input
                     type="number"
                     value={endKm}
@@ -674,7 +688,7 @@ function TimeTracking({ userId }) {
                     placeholder="e.g., 12450.8"
                     step="0.1"
                     min={currentSession?.start_km || 0}
-                    required={currentSession?.start_km ? true : false}
+                    required
                     style={{ marginBottom: '8px' }}
                   />
                 </div>
